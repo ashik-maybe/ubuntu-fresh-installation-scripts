@@ -63,6 +63,17 @@ else
     echo "⚠️ LibreOffice not installed. Skipping removal."
 fi
 
+# Step 2.1: Automatically remove GIMP if installed
+if dpkg -l | grep -E '^ii\s+gimp'; then
+    echo "🧹 GIMP detected. Removing all GIMP components and residual data..."
+    sudo apt purge -y gimp gimp-data gimp-plugin-registry gimp-data-extras
+    sudo apt autoremove -y
+    rm -rf ~/.config/GIMP ~/.cache/gimp ~/.gimp*
+    echo "✅ GIMP completely removed."
+else
+    echo "⚠️ GIMP not installed. Skipping removal."
+fi
+
 # Step 3: Install Flatpak + Flathub setup
 echo "📦 Installing Flatpak and adding Flathub..."
 if ! command -v flatpak >/dev/null 2>&1; then
