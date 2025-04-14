@@ -1,56 +1,67 @@
 #!/bin/bash
-# optimize-ubuntu-vm.sh — Optimize Ubuntu VM after installation
+# ubuntu-postinstall.sh — Post-install automation for Ubuntu and derivatives
 
 set -euo pipefail
 sudo -v
 
-echo "🧠 Detecting virtual machine environment..."
+echo "🚀 Starting Ubuntu post-install tasks..."
 
-vm_type=$(systemd-detect-virt)
-if [[ "$vm_type" == "none" ]]; then
-    echo "❌ Not running inside a VM. Exiting."
-    exit 1
+# 0. APT optimization (optional)
+if ! grep -q 'Queue-Mode' /etc/apt/apt.conf.d/99apt-optimized 2>/dev/null; then
+    read -p "Optimize APT performance? (y/n): " ans
+    [[ "$ans" =~ ^[Yy]$ ]] && ./optimize-apt.sh || echo "Skipped APT optimization."
+else
+    echo "APT already optimized."
 fi
 
-echo "✅ VM detected: $vm_type"
+# 1. Remove Snap-based Firefox
+if snap list firefox >/dev/null 2>&1; then
+    sudo snap remove --purge firefox
+    echo "Removed Snap Firefox."
+fi
 
-echo "🔧 Installing VM guest utilities..."
+# 2. Flatpak, Flathub, Flatseal
+if ! command -v flatpak >/dev/null 2>&1; then
+    sudo apt update || sudo apt update --fix-missing
+    sudo apt install -y flatpak
+fi
 
-case "$vm_type" in
-    kvm|qemu)
-        sudo apt install -y spice-vdagent qemu-guest-agent
-        sudo systemctl enable spice-vdagentd --now
-        sudo systemctl enable qemu-guest-agent --now
-        ;;
-    virtualbox)
-        sudo apt install -y virtualbox-guest-utils virtualbox-guest-x11
-        sudo systemctl enable vboxservice --now || true
-        ;;
-    vmware)
-        sudo apt install -y open-vm-tools open-vm-tools-desktop
-        ;;
-    microsoft)
-        sudo apt install -y linux-tools-virtual linux-cloud-tools-virtual
-        ;;
-    *)
-        echo "⚠️ No specific optimization available for VM type: $vm_type"
-        ;;
-esac
+if ! flatpak remotes | grep -q flathub; then
+    sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+fi
 
-echo "📦 Installing useful tools..."
-sudo apt install -y build-essential dkms clipboard-manager xclip xsel
+if ! flatpak list | grep -q com.github.tchx84.Flatseal; then
+    flatpak install -y flathub com.github.tchx84.Flatseal
+fi
 
-# Optional tweaks
-echo "🛠 Enabling recommended system tweaks..."
+# 3. Universe repo + upgrade
+sudo add-apt-repository -y universe
+sudo apt update || sudo apt update --fix-missing
+sudo apt -y upgrade
 
-# Reduce swappiness
-sudo sysctl vm.swappiness=10
-echo "vm.swappiness=10" | sudo tee /etc/sysctl.d/99-swappiness.conf > /dev/null
+# 4. Brave Browser
+if ! command -v brave-browser >/dev/null 2>&1; then
+    curl -fsS https://dl.brave.com/install.sh | sh
+fi
 
-# Enable trim for SSD-backed storage (often used in VMs)
-sudo systemctl enable fstrim.timer
+# 5. Multimedia support
+if ! dpkg -l | grep -qw ubuntu-restricted-extras; then
+    sudo apt install -y ubuntu-restricted-extras
+fi
 
-# Improve I/O performance
-echo "noop" | sudo tee /sys/block/sda/queue/scheduler 2>/dev/null || true
+# 6. GNOME-specific tools (ask before installing)
+if [ "${XDG_CURRENT_DESKTOP:-}" = "GNOME" ]; then
+    read -p "GNOME detected. Install Tweaks & Extension Manager? (y/n): " gnome_ans
+    if [[ "$gnome_ans" =~ ^[Yy]$ ]]; then
+        if ! dpkg -l | grep -qw gnome-tweaks; then
+            sudo apt install -y gnome-tweaks
+        fi
+        if ! flatpak list | grep -q com.mattjakeman.ExtensionManager; then
+            flatpak install -y flathub com.mattjakeman.ExtensionManager
+        fi
+    else
+        echo "Skipped GNOME tools."
+    fi
+fi
 
-echo "✅ VM optimization complete."
+echo "✅ Done."
