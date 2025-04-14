@@ -53,11 +53,11 @@ else
 fi
 
 # Step 2: Remove LibreOffice if requested
-if dpkg -l | grep -q "libreoffice"; then
+if dpkg -l | grep -E '^ii\s+libreoffice'; then
     read -p "Remove LibreOffice completely? (y/n): " libre_ans
     if [[ "$libre_ans" =~ ^[Yy]$ ]]; then
         echo "🧹 Removing LibreOffice..."
-        sudo apt purge -y libreoffice*
+        sudo apt purge -y $(dpkg --get-selections | grep -E '^libreoffice' | awk '{print $1}')
         sudo apt autoremove -y
         rm -rf ~/.config/libreoffice ~/.cache/libreoffice
         echo "✅ LibreOffice removed."
