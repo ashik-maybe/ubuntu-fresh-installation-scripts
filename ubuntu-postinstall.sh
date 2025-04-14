@@ -23,14 +23,17 @@ if [[ "$flatseal_ans" =~ ^[Yy]$ ]]; then
 fi
 
 # Step 2: Remove Firefox Snap
-echo "🧹 Removing Firefox Snap and its data..."
-sudo snap remove --purge firefox || true
-rm -rf ~/snap/firefox
-sudo rm -rf /var/snap/firefox
-sudo rm -rf /var/log/snapd.log* /var/lib/snapd/state.json.gz
-sudo killall firefox 2>/dev/null || true
-sudo snap refresh
-snap list | grep firefox || echo "✅ Firefox Snap removed."
+if snap list | grep -q "^firefox"; then
+    echo "🧹 Removing Firefox Snap and its data..."
+    sudo snap remove --purge firefox || true
+    rm -rf ~/snap/firefox
+    sudo rm -rf /var/snap/firefox
+    sudo rm -rf /var/log/snapd.log* /var/lib/snapd/state.json.gz
+    sudo killall firefox 2>/dev/null || true
+    echo "✅ Firefox Snap removed."
+else
+    echo "⚠️ Firefox Snap not installed. Skipping removal."
+fi
 
 # Step 3: Brave browser (optional)
 if ! command -v brave-browser &>/dev/null; then
