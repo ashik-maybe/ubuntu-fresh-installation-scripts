@@ -6,7 +6,6 @@ A collection of scripts to automate post-installation tasks for Ubuntu and its d
 
 - **`install_dev_tools.sh`**: Installs developer tools like GitHub Desktop and Visual Studio Code.
 - **`install_warp.sh`**: Sets up Cloudflare WARP for secure and private internet access.
-- **`optimize-apt.sh`**: Optimizes `apt` for faster downloads and better performance.
 - **`optimize-ubuntu-vm.sh`**: Optimizes Ubuntu for virtual machine usage.
 - **`ubuntu-postinstall.sh`**: Removes Snap packages, sets up Flatpak, installs Brave Browser, and more.
 
