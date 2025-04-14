@@ -56,14 +56,26 @@ if [[ "$libre_ans" =~ ^[Yy]$ ]]; then
     echo "✅ LibreOffice removed."
 fi
 
-read -p "Remove Thunderbird completely? (y/n): " thunder_ans
-if [[ "$thunder_ans" =~ ^[Yy]$ ]]; then
-    echo "🧹 Removing Thunderbird..."
-    sudo apt purge -y thunderbird
-    sudo apt autoremove -y
-    rm -rf ~/.thunderbird ~/.mozilla-thunderbird ~/.cache/thunderbird ~/.local/share/thunderbird
-    echo "✅ Thunderbird removed."
+# Step 4: Ask and remove Thunderbird Snap and data
+if snap list | grep -q "^thunderbird"; then
+    read -rp "❓ Do you want to completely remove Thunderbird and its data? (y/n): " remove_thunderbird
+    if [[ "$remove_thunderbird" =~ ^[Yy]$ ]]; then
+        echo "🧹 Removing Thunderbird Snap and its data..."
+        sudo snap remove --purge thunderbird || true
+        rm -rf ~/snap/thunderbird
+        sudo rm -rf /var/snap/thunderbird
+        sudo rm -rf /var/log/snapd.log* /var/lib/snapd/state.json.gz
+        sudo killall thunderbird 2>/dev/null || true
+        # Remove any leftover user config/cache/data
+        rm -rf ~/.thunderbird ~/.mozilla-thunderbird ~/.cache/thunderbird ~/.local/share/thunderbird
+        echo "✅ Thunderbird completely removed."
+    else
+        echo "⏭️ Skipping Thunderbird removal."
+    fi
+else
+    echo "⚠️ Thunderbird Snap not installed. Skipping removal."
 fi
+
 
 # Step 5: Restricted extras
 echo "🎵 Installing Ubuntu restricted extras..."
