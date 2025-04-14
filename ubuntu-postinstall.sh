@@ -49,13 +49,18 @@ if ! dpkg -l | grep -qw ubuntu-restricted-extras; then
     sudo apt install -y ubuntu-restricted-extras
 fi
 
-# 6. GNOME-specific tools
+# 6. GNOME-specific tools (ask before installing)
 if [ "${XDG_CURRENT_DESKTOP:-}" = "GNOME" ]; then
-    if ! dpkg -l | grep -qw gnome-tweaks; then
-        sudo apt install -y gnome-tweaks
-    fi
-    if ! flatpak list | grep -q com.mattjakeman.ExtensionManager; then
-        flatpak install -y flathub com.mattjakeman.ExtensionManager
+    read -p "GNOME detected. Install Tweaks & Extension Manager? (y/n): " gnome_ans
+    if [[ "$gnome_ans" =~ ^[Yy]$ ]]; then
+        if ! dpkg -l | grep -qw gnome-tweaks; then
+            sudo apt install -y gnome-tweaks
+        fi
+        if ! flatpak list | grep -q com.mattjakeman.ExtensionManager; then
+            flatpak install -y flathub com.mattjakeman.ExtensionManager
+        fi
+    else
+        echo "Skipped GNOME tools."
     fi
 fi
 
