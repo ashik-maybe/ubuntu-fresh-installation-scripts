@@ -19,12 +19,11 @@ echo "🔧 Installing VM guest utilities..."
 case "$vm_type" in
     kvm|qemu)
         sudo apt install -y spice-vdagent qemu-guest-agent
-        sudo systemctl enable spice-vdagentd --now
-        sudo systemctl enable qemu-guest-agent --now
+        sudo systemctl enable --now spice-vdagentd qemu-guest-agent
         ;;
     virtualbox)
         sudo apt install -y virtualbox-guest-utils virtualbox-guest-x11
-        sudo systemctl enable vboxservice --now || true
+        sudo systemctl enable --now vboxservice || true
         ;;
     vmware)
         sudo apt install -y open-vm-tools open-vm-tools-desktop
@@ -38,19 +37,28 @@ case "$vm_type" in
 esac
 
 echo "📦 Installing useful tools..."
-sudo apt install -y build-essential dkms clipboard-manager xclip xsel
+sudo apt install -y build-essential dkms xclip xsel
 
-# Optional tweaks
+# Optionally install clipboard manager if GUI session exists
+if [[ "$XDG_SESSION_TYPE" == "x11" || "$XDG_SESSION_TYPE" == "wayland" ]]; then
+    sudo apt install -y clipboard-manager
+fi
+
 echo "🛠 Enabling recommended system tweaks..."
 
 # Reduce swappiness
-sudo sysctl vm.swappiness=10
 echo "vm.swappiness=10" | sudo tee /etc/sysctl.d/99-swappiness.conf > /dev/null
+sudo sysctl -p /etc/sysctl.d/99-swappiness.conf
 
-# Enable trim for SSD-backed storage (often used in VMs)
+# Enable SSD trim
 sudo systemctl enable fstrim.timer
 
-# Improve I/O performance
-echo "noop" | sudo tee /sys/block/sda/queue/scheduler 2>/dev/null || true
+# Detect block device and set scheduler to noop
+echo "⚙️ Tuning I/O scheduler..."
+for dev in /sys/block/*/queue/scheduler; do
+    if grep -q "noop" "$dev"; then
+        echo "noop" | sudo tee "$dev" > /dev/null
+    fi
+done
 
 echo "✅ VM optimization complete."
