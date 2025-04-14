@@ -10,89 +10,139 @@ read -p "Have you already done that? (y/n): " _
 
 # Step 0: Enable Universe repo and update
 echo "📦 Ensuring 'universe' repo is enabled..."
-sudo add-apt-repository -y universe
+if ! grep -q "^deb .* universe" /etc/apt/sources.list; then
+    sudo add-apt-repository -y universe || echo "⚠️ Failed to enable Universe repository."
+else
+    echo "✅ Universe repository already enabled."
+fi
 sudo apt update
 
-# Step 1: Flatpak + Flathub setup
-echo "📦 Installing Flatpak and adding Flathub..."
-sudo apt install -y flatpak
-flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-read -p "Install Flatseal (Flatpak permission manager)? (y/n): " flatseal_ans
-if [[ "$flatseal_ans" =~ ^[Yy]$ ]]; then
-    flatpak install -y flathub com.github.tchx84.Flatseal || echo "⚠️ Failed to install Flatseal"
-fi
+# Step 1: Check if Snap is installed and handle Firefox/Thunderbird removals
+if command -v snap >/dev/null 2>&1; then
+    echo "🔍 Snap is installed. Checking for Firefox and Thunderbird..."
 
-# Step 2: Remove Firefox Snap
-if snap list | grep -q "^firefox"; then
-    echo "🧹 Removing Firefox Snap and its data..."
-    sudo snap remove --purge firefox || true
-    rm -rf ~/snap/firefox
-    sudo rm -rf /var/snap/firefox
-    sudo rm -rf /var/log/snapd.log* /var/lib/snapd/state.json.gz
-    sudo killall firefox 2>/dev/null || true
-    echo "✅ Firefox Snap removed."
+    # Remove Firefox Snap if present
+    if snap list | grep -q "^firefox"; then
+        echo "🧹 Removing Firefox Snap and its data..."
+        sudo snap remove --purge firefox || true
+        rm -rf ~/snap/firefox
+        sudo rm -rf /var/snap/firefox
+        sudo rm -rf /var/log/snapd.log* /var/lib/snapd/state.json.gz
+        sudo killall firefox 2>/dev/null || true
+        echo "✅ Firefox Snap removed."
+    else
+        echo "⚠️ Firefox Snap not installed. Skipping removal."
+    fi
+
+    # Remove Thunderbird Snap if present
+    if snap list | grep -q "^thunderbird"; then
+        read -rp "❓ Do you want to completely remove Thunderbird and its data? (y/n): " remove_thunderbird
+        if [[ "$remove_thunderbird" =~ ^[Yy]$ ]]; then
+            echo "🧹 Removing Thunderbird Snap and its data..."
+            sudo snap remove --purge thunderbird || true
+            rm -rf ~/snap/thunderbird
+            sudo rm -rf /var/snap/thunderbird
+            sudo rm -rf /var/log/snapd.log* /var/lib/snapd/state.json.gz
+            sudo killall thunderbird 2>/dev/null || true
+            # Remove any leftover user config/cache/data
+            rm -rf ~/.thunderbird ~/.mozilla-thunderbird ~/.cache/thunderbird ~/.local/share/thunderbird
+            echo "✅ Thunderbird completely removed."
+        else
+            echo "⏭️ Skipping Thunderbird removal."
+        fi
+    else
+        echo "⚠️ Thunderbird Snap not installed. Skipping removal."
+    fi
 else
-    echo "⚠️ Firefox Snap not installed. Skipping removal."
+    echo "⚠️ Snap is not installed. Skipping Snap-related removals."
 fi
 
-# Step 3: Install Brave Browser if not present
+# Step 2: Remove LibreOffice if requested
+if dpkg -l | grep -q "libreoffice"; then
+    read -p "Remove LibreOffice completely? (y/n): " libre_ans
+    if [[ "$libre_ans" =~ ^[Yy]$ ]]; then
+        echo "🧹 Removing LibreOffice..."
+        sudo apt purge -y libreoffice*
+        sudo apt autoremove -y
+        rm -rf ~/.config/libreoffice ~/.cache/libreoffice
+        echo "✅ LibreOffice removed."
+    else
+        echo "⏭️ Skipping LibreOffice removal."
+    fi
+else
+    echo "⚠️ LibreOffice not installed. Skipping removal."
+fi
+
+# Step 3: Install Flatpak + Flathub setup
+echo "📦 Installing Flatpak and adding Flathub..."
+if ! command -v flatpak >/dev/null 2>&1; then
+    sudo apt install -y flatpak || echo "⚠️ Failed to install Flatpak"
+else
+    echo "✅ Flatpak already installed."
+fi
+
+# Add Flathub repository if not already added
+if ! flatpak remotes | grep -q flathub; then
+    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo || echo "⚠️ Failed to add Flathub"
+else
+    echo "✅ Flathub already configured."
+fi
+
+# Check if Flatseal is installed
+if flatpak list | grep -q com.github.tchx84.Flatseal; then
+    echo "✅ Flatseal is already installed."
+else
+    read -p "Install Flatseal (Flatpak permission manager)? (y/n): " flatseal_ans
+    if [[ "$flatseal_ans" =~ ^[Yy]$ ]]; then
+        flatpak install -y flathub com.github.tchx84.Flatseal || echo "⚠️ Failed to install Flatseal"
+    else
+        echo "⏩ Skipping Flatseal installation."
+    fi
+fi
+
+# Step 4: Install Brave Browser if not present
 if ! command -v brave-browser &>/dev/null; then
     # Ensure curl is installed
     if ! command -v curl &>/dev/null; then
         echo "📦 Installing curl..."
         sudo apt update
-        sudo apt install -y curl
+        sudo apt install -y curl || echo "⚠️ Failed to install curl"
     fi
 
     echo "🌐 Brave Browser not found. Installing..."
-    curl -fsS https://dl.brave.com/install.sh | sh
+    curl -fsS https://dl.brave.com/install.sh | sh || echo "⚠️ Failed to install Brave Browser"
 else
     echo "✅ Brave Browser is already installed."
 fi
 
-# Step 4: Optional removals
-read -p "Remove LibreOffice completely? (y/n): " libre_ans
-if [[ "$libre_ans" =~ ^[Yy]$ ]]; then
-    echo "🧹 Removing LibreOffice..."
-    sudo apt purge -y libreoffice*
-    sudo apt autoremove -y
-    rm -rf ~/.config/libreoffice ~/.cache/libreoffice
-    echo "✅ LibreOffice removed."
-fi
-
-# Step 4: Ask and remove Thunderbird Snap and data
-if snap list | grep -q "^thunderbird"; then
-    read -rp "❓ Do you want to completely remove Thunderbird and its data? (y/n): " remove_thunderbird
-    if [[ "$remove_thunderbird" =~ ^[Yy]$ ]]; then
-        echo "🧹 Removing Thunderbird Snap and its data..."
-        sudo snap remove --purge thunderbird || true
-        rm -rf ~/snap/thunderbird
-        sudo rm -rf /var/snap/thunderbird
-        sudo rm -rf /var/log/snapd.log* /var/lib/snapd/state.json.gz
-        sudo killall thunderbird 2>/dev/null || true
-        # Remove any leftover user config/cache/data
-        rm -rf ~/.thunderbird ~/.mozilla-thunderbird ~/.cache/thunderbird ~/.local/share/thunderbird
-        echo "✅ Thunderbird completely removed."
-    else
-        echo "⏭️ Skipping Thunderbird removal."
-    fi
-else
-    echo "⚠️ Thunderbird Snap not installed. Skipping removal."
-fi
-
-
 # Step 5: Restricted extras
-echo "🎵 Installing Ubuntu restricted extras..."
-sudo apt install -y ubuntu-restricted-extras || echo "⚠️ Failed to install restricted extras"
+if dpkg -l | grep -q "ubuntu-restricted-extras"; then
+    echo "✅ Ubuntu restricted extras already installed."
+else
+    echo "🎵 Installing Ubuntu restricted extras..."
+    sudo apt install -y ubuntu-restricted-extras || echo "⚠️ Failed to install restricted extras"
+fi
 
 # Step 6: GNOME-specific tools
 if [ "$(echo $XDG_CURRENT_DESKTOP | grep -i gnome)" ]; then
-    read -p "Install GNOME Tweaks & Extension Manager? (y/n): " gnome_ans
-    if [[ "$gnome_ans" =~ ^[Yy]$ ]]; then
-        flatpak install -y flathub com.mattjakeman.ExtensionManager || echo "⚠️ Failed to install Extension Manager"
-        sudo apt install -y gnome-tweaks || echo "⚠️ Failed to install GNOME Tweaks"
-        echo "✅ GNOME tools installed."
+    if ! dpkg -l | grep -q "gnome-tweaks" || ! flatpak list | grep -q "com.mattjakeman.ExtensionManager"; then
+        read -p "Install GNOME Tweaks & Extension Manager? (y/n): " gnome_ans
+        if [[ "$gnome_ans" =~ ^[Yy]$ ]]; then
+            if ! flatpak list | grep -q "com.mattjakeman.ExtensionManager"; then
+                flatpak install -y flathub com.mattjakeman.ExtensionManager || echo "⚠️ Failed to install Extension Manager"
+            fi
+            if ! dpkg -l | grep -q "gnome-tweaks"; then
+                sudo apt install -y gnome-tweaks || echo "⚠️ Failed to install GNOME Tweaks"
+            fi
+            echo "✅ GNOME tools installed."
+        else
+            echo "⏭️ Skipping GNOME tools installation."
+        fi
+    else
+        echo "✅ GNOME Tweaks and Extension Manager are already installed."
     fi
+else
+    echo "⚠️ Not running GNOME. Skipping GNOME-specific tools."
 fi
 
 echo "🎉 All done! Your system is now ready."
