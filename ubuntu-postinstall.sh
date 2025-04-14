@@ -37,6 +37,13 @@ fi
 
 # Step 3: Install Brave Browser if not present
 if ! command -v brave-browser &>/dev/null; then
+    # Ensure curl is installed
+    if ! command -v curl &>/dev/null; then
+        echo "📦 Installing curl..."
+        sudo apt update
+        sudo apt install -y curl
+    fi
+
     echo "🌐 Brave Browser not found. Installing..."
     curl -fsS https://dl.brave.com/install.sh | sh
 else
