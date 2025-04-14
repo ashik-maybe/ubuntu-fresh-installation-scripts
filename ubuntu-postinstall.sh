@@ -52,18 +52,13 @@ else
     echo "⚠️ Snap is not installed. Skipping Snap-related removals."
 fi
 
-# Step 2: Remove LibreOffice if requested
+# Step 2: Automatically remove LibreOffice if installed
 if dpkg -l | grep -E '^ii\s+libreoffice'; then
-    read -p "Remove LibreOffice completely? (y/n): " libre_ans
-    if [[ "$libre_ans" =~ ^[Yy]$ ]]; then
-        echo "🧹 Removing LibreOffice..."
-        sudo apt purge -y $(dpkg --get-selections | grep -E '^libreoffice' | awk '{print $1}')
-        sudo apt autoremove -y
-        rm -rf ~/.config/libreoffice ~/.cache/libreoffice
-        echo "✅ LibreOffice removed."
-    else
-        echo "⏭️ Skipping LibreOffice removal."
-    fi
+    echo "🧹 LibreOffice detected. Removing all LibreOffice components and residual data..."
+    sudo apt purge -y $(dpkg --get-selections | grep -E '^libreoffice' | awk '{print $1}')
+    sudo apt autoremove -y
+    rm -rf ~/.config/libreoffice ~/.cache/libreoffice ~/.local/share/libreoffice
+    echo "✅ LibreOffice completely removed."
 else
     echo "⚠️ LibreOffice not installed. Skipping removal."
 fi
