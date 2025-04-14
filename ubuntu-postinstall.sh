@@ -35,13 +35,10 @@ else
     echo "⚠️ Firefox Snap not installed. Skipping removal."
 fi
 
-# Step 3: Brave browser (optional)
+# Step 3: Install Brave Browser if not present
 if ! command -v brave-browser &>/dev/null; then
-    read -p "Install Brave Browser? (y/n): " brave_ans
-    if [[ "$brave_ans" =~ ^[Yy]$ ]]; then
-        echo "🌐 Installing Brave Browser..."
-        curl -fsS https://dl.brave.com/install.sh | sh || echo "⚠️ Brave installation failed"
-    fi
+    echo "🌐 Brave Browser not found. Installing..."
+    curl -fsS https://dl.brave.com/install.sh | sh
 else
     echo "✅ Brave Browser is already installed."
 fi
