@@ -17,11 +17,11 @@ else
 fi
 sudo apt update
 
-# Step 1: Check if Snap is installed and handle Firefox/Thunderbird removals
+# Step 1: Handle Snap-based Firefox/Thunderbird removal
 if command -v snap >/dev/null 2>&1; then
     echo "🔍 Snap is installed. Checking for Firefox and Thunderbird..."
 
-    # Remove Firefox Snap if present
+    # Force remove Firefox Snap if present
     if snap list | grep -q "^firefox"; then
         echo "🧹 Removing Firefox Snap and its data..."
         sudo snap remove --purge firefox || true
@@ -34,22 +34,17 @@ if command -v snap >/dev/null 2>&1; then
         echo "⚠️ Firefox Snap not installed. Skipping removal."
     fi
 
-    # Remove Thunderbird Snap if present
+    # Force remove Thunderbird Snap if present
     if snap list | grep -q "^thunderbird"; then
-        read -rp "❓ Do you want to completely remove Thunderbird and its data? (y/n): " remove_thunderbird
-        if [[ "$remove_thunderbird" =~ ^[Yy]$ ]]; then
-            echo "🧹 Removing Thunderbird Snap and its data..."
-            sudo snap remove --purge thunderbird || true
-            rm -rf ~/snap/thunderbird
-            sudo rm -rf /var/snap/thunderbird
-            sudo rm -rf /var/log/snapd.log* /var/lib/snapd/state.json.gz
-            sudo killall thunderbird 2>/dev/null || true
-            # Remove any leftover user config/cache/data
-            rm -rf ~/.thunderbird ~/.mozilla-thunderbird ~/.cache/thunderbird ~/.local/share/thunderbird
-            echo "✅ Thunderbird completely removed."
-        else
-            echo "⏭️ Skipping Thunderbird removal."
-        fi
+        echo "🧹 Removing Thunderbird Snap and its data..."
+        sudo snap remove --purge thunderbird || true
+        rm -rf ~/snap/thunderbird
+        sudo rm -rf /var/snap/thunderbird
+        sudo rm -rf /var/log/snapd.log* /var/lib/snapd/state.json.gz
+        sudo killall thunderbird 2>/dev/null || true
+        # Remove leftover user config/cache/data
+        rm -rf ~/.thunderbird ~/.mozilla-thunderbird ~/.cache/thunderbird ~/.local/share/thunderbird
+        echo "✅ Thunderbird completely removed."
     else
         echo "⚠️ Thunderbird Snap not installed. Skipping removal."
     fi
@@ -81,7 +76,6 @@ else
     echo "✅ Flatpak already installed."
 fi
 
-# Add Flathub repository if not already added
 if ! flatpak remotes | grep -q flathub; then
     flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo || echo "⚠️ Failed to add Flathub"
 else
@@ -102,7 +96,6 @@ fi
 
 # Step 4: Install Brave Browser if not present
 if ! command -v brave-browser &>/dev/null; then
-    # Ensure curl is installed
     if ! command -v curl &>/dev/null; then
         echo "📦 Installing curl..."
         sudo apt update
@@ -124,10 +117,9 @@ else
 fi
 
 # Step 6: GNOME-specific tools
-if [ "$(echo $XDG_CURRENT_DESKTOP | grep -i gnome)" ]; then
+if [[ "${XDG_CURRENT_DESKTOP,,}" == *gnome* ]]; then
     echo "🔍 GNOME detected. Checking for GNOME-specific tools..."
 
-    # Check and install GNOME Tweaks
     if dpkg -l | grep -q "^ii\s\+gnome-tweaks" || command -v gnome-tweaks >/dev/null 2>&1; then
         echo "✅ GNOME Tweaks is already installed."
     else
@@ -140,7 +132,6 @@ if [ "$(echo $XDG_CURRENT_DESKTOP | grep -i gnome)" ]; then
         fi
     fi
 
-    # Check and install Extension Manager
     if flatpak list | grep -q "com.mattjakeman.ExtensionManager"; then
         echo "✅ Extension Manager is already installed."
     else
@@ -154,5 +145,12 @@ if [ "$(echo $XDG_CURRENT_DESKTOP | grep -i gnome)" ]; then
 else
     echo "⚠️ Not running GNOME. Skipping GNOME-specific tools."
 fi
+
+# Final Step: System upgrade
+echo "📦 Upgrading system packages..."
+sudo apt update
+sudo apt full-upgrade -y
+sudo apt autoremove -y
+echo "✅ System upgrade complete."
 
 echo "🎉 All done! Your system is now ready."
