@@ -125,21 +125,30 @@ fi
 
 # Step 6: GNOME-specific tools
 if [ "$(echo $XDG_CURRENT_DESKTOP | grep -i gnome)" ]; then
-    if ! dpkg -l | grep -q "gnome-tweaks" || ! flatpak list | grep -q "com.mattjakeman.ExtensionManager"; then
-        read -p "Install GNOME Tweaks & Extension Manager? (y/n): " gnome_ans
-        if [[ "$gnome_ans" =~ ^[Yy]$ ]]; then
-            if ! flatpak list | grep -q "com.mattjakeman.ExtensionManager"; then
-                flatpak install -y flathub com.mattjakeman.ExtensionManager || echo "⚠️ Failed to install Extension Manager"
-            fi
-            if ! dpkg -l | grep -q "gnome-tweaks"; then
-                sudo apt install -y gnome-tweaks || echo "⚠️ Failed to install GNOME Tweaks"
-            fi
-            echo "✅ GNOME tools installed."
-        else
-            echo "⏭️ Skipping GNOME tools installation."
-        fi
+    echo "🔍 GNOME detected. Checking for GNOME-specific tools..."
+
+    # Check and install GNOME Tweaks
+    if dpkg -l | grep -q "gnome-tweaks"; then
+        echo "✅ GNOME Tweaks is already installed."
     else
-        echo "✅ GNOME Tweaks and Extension Manager are already installed."
+        read -p "Install GNOME Tweaks? (y/n): " tweaks_ans
+        if [[ "$tweaks_ans" =~ ^[Yy]$ ]]; then
+            sudo apt install -y gnome-tweaks || echo "⚠️ Failed to install GNOME Tweaks"
+        else
+            echo "⏭️ Skipping GNOME Tweaks installation."
+        fi
+    fi
+
+    # Check and install Extension Manager
+    if flatpak list | grep -q "com.mattjakeman.ExtensionManager"; then
+        echo "✅ Extension Manager is already installed."
+    else
+        read -p "Install Extension Manager? (y/n): " ext_manager_ans
+        if [[ "$ext_manager_ans" =~ ^[Yy]$ ]]; then
+            flatpak install -y flathub com.mattjakeman.ExtensionManager || echo "⚠️ Failed to install Extension Manager"
+        else
+            echo "⏭️ Skipping Extension Manager installation."
+        fi
     fi
 else
     echo "⚠️ Not running GNOME. Skipping GNOME-specific tools."
