@@ -128,11 +128,12 @@ if [ "$(echo $XDG_CURRENT_DESKTOP | grep -i gnome)" ]; then
     echo "🔍 GNOME detected. Checking for GNOME-specific tools..."
 
     # Check and install GNOME Tweaks
-    if dpkg -l | grep -q "gnome-tweaks"; then
+    if dpkg -l | grep -q "^ii\s\+gnome-tweaks" || command -v gnome-tweaks >/dev/null 2>&1; then
         echo "✅ GNOME Tweaks is already installed."
     else
         read -p "Install GNOME Tweaks? (y/n): " tweaks_ans
         if [[ "$tweaks_ans" =~ ^[Yy]$ ]]; then
+            echo "📦 Installing GNOME Tweaks..."
             sudo apt install -y gnome-tweaks || echo "⚠️ Failed to install GNOME Tweaks"
         else
             echo "⏭️ Skipping GNOME Tweaks installation."
