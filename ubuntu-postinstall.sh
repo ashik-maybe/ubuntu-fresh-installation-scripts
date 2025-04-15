@@ -50,14 +50,6 @@ else
     echo "⚠️ GNOME not detected. Skipping GNOME Tweaks and Extension Manager."
 fi
 
-# Restricted extras: only if package is available in apt
-if apt-cache policy ubuntu-restricted-extras | grep -q 'Candidate:'; then
-    ask_install "Restricted Extras" "dpkg -l | grep -q '^ii\s\+ubuntu-restricted-extras'" extras_ans
-else
-    extras_ans=false
-    echo "⚠️ ubuntu-restricted-extras not available on this system. Skipping."
-fi
-
 # ─── Step 1: Snap cleanup (Firefox + Thunderbird) ──────────────
 
 if command -v snap >/dev/null 2>&1; then
@@ -160,9 +152,10 @@ if [ "$extman_ans" = true ]; then
     flatpak install -y flathub com.mattjakeman.ExtensionManager || echo "⚠️ Failed to install Extension Manager"
 fi
 
-if [ "$extras_ans" = true ]; then
-    sudo apt install -y ubuntu-restricted-extras || echo "⚠️ Failed to install restricted extras"
-    echo "✅ Ubuntu restricted extras installed."
-fi
+# ─── Step 8: Install restricted extras (no check) ─────────────
+
+echo "📦 Installing Ubuntu restricted extras..."
+sudo apt install -y ubuntu-restricted-extras || echo "⚠️ Failed to install restricted extras"
+echo "✅ Ubuntu restricted extras installed."
 
 echo "🎉 All done! Your system is now clean, sharp, and ready to go!"
