@@ -19,7 +19,6 @@ sudo apt update
 
 # ─── Initial Checks and Prompts ────────────────────────────────
 
-# Ask only if not installed
 ask_install() {
     local name="$1"
     local check_cmd="$2"
@@ -40,9 +39,24 @@ ask_install() {
 
 ask_install "Brave Browser" "command -v brave-browser" brave_ans
 ask_install "Flatseal" "flatpak list | grep -q com.github.tchx84.Flatseal" flatseal_ans
-ask_install "GNOME Tweaks" "command -v gnome-tweaks" tweaks_ans
-ask_install "Extension Manager" "flatpak list | grep -q com.mattjakeman.ExtensionManager" extman_ans
-ask_install "Restricted Extras" "dpkg -l | grep -q '^ii\s\+ubuntu-restricted-extras'" extras_ans
+
+# GNOME tools: only if current desktop is GNOME
+if [[ "${XDG_CURRENT_DESKTOP,,}" == *gnome* ]]; then
+    ask_install "GNOME Tweaks" "command -v gnome-tweaks" tweaks_ans
+    ask_install "Extension Manager" "flatpak list | grep -q com.mattjakeman.ExtensionManager" extman_ans
+else
+    tweaks_ans=false
+    extman_ans=false
+    echo "⚠️ GNOME not detected. Skipping GNOME Tweaks and Extension Manager."
+fi
+
+# Restricted extras: only if package is available in apt
+if apt-cache policy ubuntu-restricted-extras | grep -q 'Candidate:'; then
+    ask_install "Restricted Extras" "dpkg -l | grep -q '^ii\s\+ubuntu-restricted-extras'" extras_ans
+else
+    extras_ans=false
+    echo "⚠️ ubuntu-restricted-extras not available on this system. Skipping."
+fi
 
 # ─── Step 1: Snap cleanup (Firefox + Thunderbird) ──────────────
 
